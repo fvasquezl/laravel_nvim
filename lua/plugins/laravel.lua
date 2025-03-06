@@ -100,6 +100,7 @@ return {
   {
     "L3MON4D3/LuaSnip", -- Snippets
   },
+
   {
     "hrsh7th/nvim-cmp", -- Autocompletado
     dependencies = {
@@ -116,17 +117,49 @@ return {
           end,
         },
         sources = cmp.config.sources({
-          { name = "nvim_lsp" },
-          { name = "luasnip" },
-          { name = "buffer" },
+          { name = "nvim_lsp", priority = 100 }, -- Prioridad alta para LSP
+          { name = "luasnip", priority = 75 }, -- Prioridad media para snippets
+          { name = "buffer", priority = 50 }, -- Prioridad baja para buffer
         }),
-        mapping = {
-          ["<C-Space>"] = cmp.mapping.complete(),
-          ["<CR>"] = cmp.mapping.confirm({ select = true }),
+        mapping = cmp.mapping.preset.insert({
+          ["<C-Space>"] = cmp.mapping.complete(), -- Mostrar sugerencias manualmente
+          ["<CR>"] = cmp.mapping.confirm({ select = true }), -- Confirmar selección
+          ["<Tab>"] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+              cmp.select_next_item() -- Navegar adelante si hay sugerencias
+            else
+              fallback() -- Comportamiento normal de <Tab>
+            end
+          end, { "i", "s" }),
+          ["<S-Tab>"] = cmp.mapping(function(fallback)
+            if cmp.visible() then
+              cmp.select_prev_item() -- Navegar atrás si hay sugerencias
+            else
+              fallback() -- Comportamiento normal de <S-Tab>
+            end
+          end, { "i", "s" }),
+        }),
+        completion = {
+          autocomplete = false, -- Desactivar el autocompletado automático
+          debounce = 150, -- Retraso de 150 ms antes de mostrar sugerencias
+        },
+        window = {
+          completion = cmp.config.window.bordered({
+            border = "rounded", -- Borde redondeado
+            winhighlight = "Normal:Normal,FloatBorder:FloatBorder,CursorLine:Visual,Search:None",
+          }),
+          documentation = cmp.config.window.bordered({
+            border = "rounded", -- Borde redondeado
+            winhighlight = "Normal:Normal,FloatBorder:FloatBorder,CursorLine:Visual,Search:None",
+          }),
+        },
+        experimental = {
+          ghost_text = true, -- Mostrar texto fantasma para sugerencias
         },
       })
     end,
   },
+
   {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
@@ -176,18 +209,30 @@ return {
   --  npm install -g prettier
   {
     "stevearc/conform.nvim",
-    opts = {
-      format_on_save = {
-        timeout_ms = 3000,
-        lsp_fallback = true,
-      },
-      formatters_by_ft = {
-        php = { "php-cs-fixer" }, -- Formatea archivos PHP (controladores, modelos, etc.)
-        blade = { "blade-formatter" }, -- Formatea vistas Blade
-        html = { "prettier" }, -- Opcional: para archivos HTML
-        css = { "prettier" }, -- Opcional: para CSS (incluye Tailwind)
-        javascript = { "prettier" }, -- Opcional: para JS
-      },
-    },
+    config = function()
+      require("conform").setup({
+        format_on_save = {
+          timeout_ms = 3000,
+          lsp_fallback = true,
+        },
+        formatters = {
+          ["php-cs-fixer"] = {
+            command = "php-cs-fixer",
+            env = { "PHP_CS_FIXER_IGNORE_ENV= 1" },
+          },
+        },
+        formatters_by_ft = {
+          php = { "php-cs-fixer" }, -- Para formatear archivos PHP
+          blade = { "blade-formatter" }, -- Para Blade
+          html = { "prettier" },
+          css = { "prettier" },
+          javascript = { "prettier" },
+        },
+      })
+      -- Asignar el comando :Format manualmente
+      vim.api.nvim_create_user_command("Format", function()
+        require("conform").format()
+      end, {})
+    end,
   },
 }
